@@ -4,12 +4,15 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const morgan = require('morgan');
+const passport = require("passport");
+const session = require("express-session");
 const { Server } = require('socket.io');
 const http = require('http');
 const jwt = require('jsonwebtoken');
 const project = require("./model/projectmodel");
 const mongoose = require("mongoose");
 const { generateResult } = require('./services/aiServices');
+const pass=require("./googleAuthentication/passport.js");
 
 const db = require('./db/db');
 const userRoute = require('./routes/userRoutes');
@@ -25,13 +28,23 @@ app.use(morgan('dev'));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+app.use(
+    session({
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+    })
+  );
+  app.use(passport.initialize());
+app.use(passport.session());
+
 const io = new Server(server, {
     cors: {
         origin: '*',
     }
 });
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT ;
 
 app.use('/api/userapi', userRoute);
 app.use('/api/projectapi', projectRoute);
@@ -40,6 +53,22 @@ app.use('/api/aiapi', aiRoute);
 app.get('/', (req, res) => {
     res.send('Hello World');
 });
+
+
+
+app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: "/login",
+    successRedirect: "/", // redirect after login
+  })
+);
+
+
+
+
 
 // Middleware for socket.io authentication
 io.use(async (socket, next) => {

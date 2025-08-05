@@ -4,6 +4,8 @@ import Login from "../screens/Login.jsx";
 import Register from "../screens/Register.jsx";
 import Project from "../screens/Project.jsx";
 import UserAuth from "../auth/UserAuth.jsx";
+import ForgotPassword from "../screens/ForgotPassword.jsx";
+import ResetPassword from "../screens/ResetPassword.jsx";
 
 const AppRoutes = () => {
   return (
@@ -13,6 +15,8 @@ const AppRoutes = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/project" element={<UserAuth><Project /></UserAuth>} />
+        <Route path="/ForgotPassword" element={<ForgotPassword />} />
+        <Route path="/ResetPassword/:resetToken"element={<ResetPassword/>}/>
         <Route path="*" element={<div>404 Not Found</div>} />
       </Routes>
     </BrowserRouter>

@@ -2,7 +2,10 @@
 import { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { UserContext } from '../context/UserContext'
+import { UserContext } from '../context/UserContext';
+import img1 from '../assets/google-color.svg'
+import img2 from '../assets/85z_2201_w009_n001_95c_p6_95-removebg-preview.png'
+
 
 const API_BASE = "http://localhost:5000"; // Update to match your backend port
 
@@ -59,6 +62,7 @@ const Login = () => {
     return (
         <>
         <div className="min-h-screen flex items-center justify-center bg-gray-900">
+            {/* <img src={img2} alt='bg-img' className='w- h-48'/> */}
             <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md">
                 <h2 className="text-2xl text-center font-bold text-green-500 mb-6">Login</h2>
                 <form onSubmit={handleSubmit}>
@@ -96,6 +100,23 @@ const Login = () => {
                         Login
                     </button>
                 </form>
+                
+                <Link to="/ForgotPassword" className="text-green-500 hover:underline">
+                        Forgot Password
+                    </Link>
+
+
+                    <div className="mt-1">
+                    <Link to="http://localhost:5000/auth/google">
+    <button className="px-4 py-2  bg-green-600 hover:bg-green-400 flex gap-2 border-slate-200 rounded-lg text-white       
+       text-sm">
+        <img className="w-4 h-4 mt-1" src={img1} loading="lazy" alt="google logo"/>
+        <span> Google</span>
+    </button>
+    </Link>
+</div>
+
+
                 <p className="text-gray-400 mt-4">
                     Dont have an account?{' '}
                     <Link to="/register" className="text-green-500 hover:underline">

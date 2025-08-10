@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ID and Class Rule Example</title>
+
+    <style>
+        .head {
+            color: blue;
+            font-style: italic;
+            
+        }
+        #div1 {
+            width: 1200px;
+            height: 200px;
+            background-color: lightblue;
+            border: 2px solid blue;
+            margin: 20px auto;
+        }
+        .div2 {
+            width: 1000px;
+            height: 200px;
+            background-color: rgb(50, 164, 202);
+            border: 2px solid rgb(0, 255, 68);
+            margin: 20px auto;
+        }
+        li{
+            color: green;
+            font-size: 20px;
+            
+        }
+       
+        </style>
+    
+</head>
+<body>
+    <h2  class="head">Rules of ID and Class in CSS</h2>
+    <ul>
+        <li>ID selector is defined with a <code>#</code> followed by the unique ID name.</li>
+        <li>Class selector is defined with a <code>.</code> followed by the class name.</li>
+        <li>ID must be unique within a page, while class can be used on multiple elements.</li>
+        <li>ID has higher specificity than class in CSS.</li>
+        <li>Use ID for single, unique elements; use class for reusable styles.</li>
+    </ul>
+    <div id="div1">Lorem ipsum, dolor sit amet consectetur adipisicing elit.
+         Fugiat est totam repellat eos odio adipisci. Nulla illo aut incidunt.
+        </div>
+
+    <div class="div2">Lorem ipsum, dolor sit amet consectetur adipisicing elit.
+         Fugiat est totam repellat eos odio adipisci. Nulla illo aut incidunt.
+        </div>
+        
+</body>
+</html>

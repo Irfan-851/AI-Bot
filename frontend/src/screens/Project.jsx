@@ -75,6 +75,29 @@ const Project = () => {
     }
   };
 
+  const uploadFile = async (file) => {
+    if (!file || !project?._id) return;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('projectId', project._id);
+    
+    try {
+      const response = await axios.post(`${API_BASE}/api/fileUploadapi/upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      return response.data.file;
+    } catch (error) {
+      console.error('File upload failed:', error);
+      alert(`File upload failed: ${error.response?.data?.error || error.message}`);
+      return null;
+    }
+  };
+
   // Helper: fetch all users
   const fetchAllUsers = async () => {
     try {
@@ -104,15 +127,30 @@ const Project = () => {
   };
 
   // Modified: Immediately append user message to local messages for instant feedback
-  const sendMessageFrom = (source = 'unknown') => {
+  const sendMessageFrom = async (source = 'unknown') => {
     if (isSendingMessage) return;
     if (source === 'enter-key' && messageInput.current && document.activeElement !== messageInput.current) {
       return;
     }
     if (!user) return;
-    if (!message.trim()) return;
-
+    
     setIsSendingMessage(true);
+    
+    // If we have a file selected, send it
+    if (selectedFile) {
+      await sendFileMessage(selectedFile);
+      setSelectedFile(null);
+      setMessage("");
+      setIsSendingMessage(false);
+      return;
+    }
+    
+    // Otherwise send text message
+    if (!message.trim()) {
+      setIsSendingMessage(false);
+      return;
+    }
+  
     setMessages((prevMessages) => [
       ...prevMessages,
       {
@@ -135,6 +173,8 @@ const Project = () => {
       }
     }, 0);
   };
+  
+  
 
   // add user in project
   const addCollaborators = async () => {
@@ -250,6 +290,24 @@ const Project = () => {
       }, 0);
     });
 
+    received('project-file', (fileData) => {
+      console.log('Received project-file:', fileData); // Debug log
+      const fileMessage = {
+        _id: `file-${Date.now()}`,
+        isFile: true,
+        file: fileData.file,
+        sender: fileData.sender,
+        timestamp: new Date()
+      };
+      console.log('Created file message:', fileMessage); // Debug log
+      setMessages(prev => [...prev, fileMessage]);
+      setTimeout(() => {
+        if (messageBox.current) {
+          messageBox.current.scrollTop = messageBox.current.scrollHeight;
+        }
+      }, 0);
+    });
+
     fetchAllUsers();
     fetchProjectDetails(project._id);
 
@@ -325,18 +383,56 @@ const Project = () => {
     user.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setSelectedFile(file);
-      setMessage(`Selected file: ${file.name}`);
-      setTimeout(() => {
-        if (messageBox.current) {
-          messageBox.current.scrollTop = messageBox.current.scrollHeight;
-        }
-      }, 0);
+    if (!file) return;
+    
+    // Check file size (100MB limit to match backend)
+    if (file.size > 100 * 1024 * 1024) {
+      alert('File size exceeds 100MB limit');
+      e.target.value = ''; // Reset file input
+      return;
     }
+    
+    // Set the selected file and show preview in input
+    setSelectedFile(file);
+    setMessage(`📎 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+    
+    // Reset file input but keep the file in state
+    e.target.value = '';
   };
+
+ const sendFileMessage = async (file) => {
+  const fileData = await uploadFile(file);
+  
+  if (fileData) {
+    // Create file URL for preview if it's an image
+    let previewUrl = '';
+    if (file.type.startsWith('image/')) {
+      previewUrl = URL.createObjectURL(file);
+    }
+
+    const fileMessage = {
+      _id: `file-${Date.now()}`,
+      isFile: true,
+      file: {
+        ...fileData,
+        previewUrl  // Add preview URL for images
+      },
+      sender: user,
+      timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, fileMessage]);
+    
+    // Send via Socket.IO
+    send("project-file", {
+      ...fileMessage,
+      // Don't send preview URL to others (they'll get it from server)
+      file: fileData 
+    });
+  }
+};
 
   // If project is still not loaded, show a loading or error message
   if (!project || !project._id) {
@@ -493,8 +589,8 @@ const Project = () => {
             boxShadow: "0 4px 32px 0 rgba(79,140,255,0.08)",
             margin: "12px 6px 12px 12px",
             overflow: "hidden",
-            minWidth: 340,
-            maxWidth: 400,
+            minWidth: 500,
+            maxWidth: 600,
             height: "calc(100vh - 24px)",
             flex: "0 0 370px",
             display: "flex",
@@ -583,6 +679,85 @@ const Project = () => {
                     : `msg-${index}`);
                 const isAI = msg.sender?._id === "ai";
                 const isUser = msg.sender?._id === user?._id?.toString();
+                
+                // Handle file messages
+                if (msg.isFile) {
+                  return (
+                    <div key={msg._id} style={{ 
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: isUser ? 'flex-end' : 'flex-start',
+                      marginBottom: 6
+                    }}>
+                      <span className="chat-meta" style={{ 
+                        alignSelf: isUser ? 'flex-end' : 'flex-start',
+                        marginBottom: 2,
+                        fontWeight: 500,
+                        color: '#64748b'
+                      }}>
+                        {msg.sender?.email}
+                      </span>
+                      <div className="file-message" style={{
+                        background: '#fff',
+                        borderRadius: '18px',
+                        padding: '12px',
+                        maxWidth: '340px',
+                        wordBreak: 'break-word'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                          <i className="ri-file-fill" style={{ fontSize: '24px', marginRight: '8px' }}></i>
+                          <div>
+                            <div style={{ fontWeight: 500 }}>{msg.file.name}</div>
+                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                              {(msg.file.size / 1024).toFixed(1)} KB
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Preview for images */}
+                        {msg.file.type.startsWith('image/') && (
+                          <img 
+                            src={msg.file.previewUrl || 
+               (msg.file.url.startsWith('http') ? msg.file : `${API_BASE}${msg.file}`)}  
+                            alt={msg.file.name} 
+                            style={{ 
+                              maxWidth: '100%', 
+                              maxHeight: '200px',
+                              borderRadius: '8px',
+                              marginTop: '8px'
+                            }}
+                            onLoad={() => {
+            // Revoke object URL after image loads
+            if (msg.file.previewUrl) {
+              URL.revokeObjectURL(msg.file.previewUrl);
+            }
+          }}
+                          />
+                        )}
+                        
+                        <a 
+                          href={msg.file.url.startsWith('http') ? msg.file.url : `${API_BASE}${msg.file.url}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-block',
+                            background: '#4f8cff',
+                            color: 'white',
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            textDecoration: 'none',
+                            marginTop: '8px',
+                            fontSize: '0.9rem'
+                          }}
+                        >
+                         <i class="ri-arrow-down-circle-fill"></i>
+                        </a>
+                      </div>
+                    </div>
+                  );
+                }
+                
+                // Handle regular messages
                 return (
                   <div
                     key={key}
@@ -669,13 +844,15 @@ const Project = () => {
                 type="text"
                 required
                 onChange={(e) => {
-                  setMessage(e.target.value);
-                 
+                  // Don't allow editing if file is selected
+                  if (!selectedFile) {
+                    setMessage(e.target.value);
+                  }
                 }}
                 value={message}
                 aria-describedby="helper-text-explanation"
                 className="chat-input"
-                placeholder="Type your message..."
+                placeholder={selectedFile ? "File selected - click send or clear" : "Type your message..."}
                 style={{
                   fontFamily: CHAT_FONT,
                   fontSize: "1.08rem",
@@ -683,12 +860,13 @@ const Project = () => {
                   border: "none",
                   outline: "none",
                   padding: "14px 18px",
-                  background: "#fff",
+                  background: selectedFile ? "#f0f9ff" : "#fff",
                   color: "#222",
                   width: "100%",
                   boxShadow: "0 1px 4px 0 rgba(79,140,255,0.04)",
-                  minWidth: 0,
+                  
                 }}
+                readOnly={selectedFile ? true : false}
                 onKeyDown={e => {
                   if (e.target !== messageInput.current) {
                     return;
@@ -700,6 +878,29 @@ const Project = () => {
                   }
                 }}
               />
+              {/* Clear file button */}
+              {selectedFile && (
+                <button
+                  className="chat-clear-btn"
+                  onClick={() => {
+                    setSelectedFile(null);
+                    setMessage("");
+                  }}
+                  title="Clear file selection"
+                  style={{
+                    background: "#ef4444",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "8px 10px",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    marginLeft: "8px"
+                  }}
+                >
+                  <i className="ri-close-line"></i>
+                </button>
+              )}
               {/* Gallery Icon */}
               <button
                 className="chat-gallery-btn"
@@ -711,9 +912,9 @@ const Project = () => {
               <input
                 id="fileInput"
                 type="file"
-                onChange={(e) => handleFileSelect(e)}
+                onChange={handleFileSelect}
                 className="hidden"
-                accept="image/*,video/*"
+                accept="*"
               />
               <button
                 className="chat-send-btn"

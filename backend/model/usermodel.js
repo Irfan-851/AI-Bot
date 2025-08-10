@@ -19,6 +19,7 @@ const userSchema = new mongoose.Schema({
         select: false,
     },
     googleId: { type: String },
+    
     resetPasswordToken: String,
   resetPasswordExpire: Date,
 })
@@ -34,7 +35,10 @@ userSchema.methods.isValidPassword = async function (password) {
 
 userSchema.methods.generateJWT = function () {
     return jwt.sign(
-        { email: this.email },
+        { 
+            id: this._id,
+            email: this.email 
+        },
         process.env.JWT_SECRET,
         { expiresIn: '24h' }
     );

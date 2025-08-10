@@ -13,11 +13,13 @@ const project = require("./model/projectmodel");
 const mongoose = require("mongoose");
 const { generateResult } = require('./services/aiServices');
 const pass=require("./googleAuthentication/passport.js");
-
+const fs = require('fs');
+const path = require('path');
 const db = require('./db/db');
 const userRoute = require('./routes/userRoutes');
 const projectRoute = require('./routes/projectRoutes');
 const aiRoute = require('./routes/aiRoutes');
+const fileRoute = require('./routes/fileUploadRoutes.js')
 
 const app = express();
 const server = http.createServer(app);
@@ -37,7 +39,8 @@ app.use(
   );
   app.use(passport.initialize());
 app.use(passport.session());
-
+// Serve uploaded files statically
+app.use('/temp-files', express.static(path.join(__dirname, 'temp-uploads')));
 const io = new Server(server, {
     cors: {
         origin: '*',
@@ -49,6 +52,7 @@ const port = process.env.PORT ;
 app.use('/api/userapi', userRoute);
 app.use('/api/projectapi', projectRoute);
 app.use('/api/aiapi', aiRoute);
+app.use('/api/fileUploadapi',fileRoute)
 
 app.get('/', (req, res) => {
     res.send('Hello World');
@@ -153,8 +157,16 @@ io.on('connection', (socket) => {
             console.log('Regular message, broadcasting to all'); // Debug log
             // For regular messages, broadcast to all in the room (including sender)
             io.to(socket.roomId).emit('project-message', data);
-        }
+        }        
     });
+
+    socket.on('file-uploaded', (fileData) => {
+        // Broadcast file to all in the room
+        io.to(socket.roomId).emit('project-file', {
+          file: fileData,
+          sender: socket.user
+        });
+      });
 
     // Handle client disconnection
     socket.on('disconnect', () => {

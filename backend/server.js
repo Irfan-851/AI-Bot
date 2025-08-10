@@ -54,6 +54,12 @@ app.use('/api/projectapi', projectRoute);
 app.use('/api/aiapi', aiRoute);
 app.use('/api/fileUploadapi',fileRoute)
 
+app.use(express.static(path.join(__dirname, "../frontend/build")));
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/build/index.html"));
+});
+
 app.get('/', (req, res) => {
     res.send('Hello World');
 });
